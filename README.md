@@ -1,2 +1,3 @@
-# smart-city-traffic-capstone
-AL, ML and Data Science Capstone Project
+# Create Smart City Traffic Intelligence from Data Analytics to AI-Powered Mobility 
+I am part of a Smart City Mobility Analytics Team supporting a city government in improving traffic management and commuter mobility. The city has collected approximately 48,000 hourly records of westbound I-94 traffic volume near Minneapolis–St Paul, together with weather conditions and US federal holiday information. The dataset contains traffic volume, temperature, weather and time-related information that can be used to understand traffic patterns, identify congestion, build predictive models and develop AI-enabled mobility solutions. 
+### Project/repository structure
