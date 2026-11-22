@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="SQL_Based_Traffic_Analysis.db" readonly="0" foreign_keys="0" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="1459"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="traffic" custom_title="0" dock_id="1" table="4,7:maintraffic"/><dock_state state="000000ff00000000fd0000000100000002000006ea000004fefc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000000006ea0000013300ffffff000002580000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="traffic" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="227"/><column index="2" value="94"/><column index="3" value="55"/><column index="4" value="61"/><column index="5" value="64"/><column index="6" value="101"/><column index="7" value="257"/><column index="8" value="174"/><column index="9" value="96"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="1.2 Analyse annual traffic trends">WITH yearly AS (
+    SELECT
+        strftime('%Y', date_time) AS year,
+        COUNT(*) AS records,
+        COUNT(DISTINCT strftime('%m', date_time)) AS months_covered,
+        SUM(CAST(traffic_volume AS INTEGER)) AS total,
+        AVG(CAST(traffic_volume AS INTEGER)) AS avg_per_hour
+    FROM traffic
+    WHERE strftime('%Y', date_time) BETWEEN '2012' AND '2017'
+    GROUP BY year
+)
+SELECT
+    year,
+    records,
+    months_covered,
+    total,
+    total - LAG(total) OVER (ORDER BY year) AS total_change,
+    ROUND(100.0 * (total - LAG(total) OVER (ORDER BY year))
+          / LAG(total) OVER (ORDER BY year), 1) AS total_pct_change,
+    CASE
+        WHEN LAG(total) OVER (ORDER BY year) IS NULL THEN 'first year'
+        WHEN total &gt; LAG(total) OVER (ORDER BY year) THEN 'increase'
+        WHEN total &lt; LAG(total) OVER (ORDER BY year) THEN 'decrease'
+        ELSE 'no change'
+    END AS total_trend,
+    ROUND(avg_per_hour, 1) AS avg_per_hour,
+    ROUND(100.0 * (avg_per_hour - LAG(avg_per_hour) OVER (ORDER BY year))
+          / LAG(avg_per_hour) OVER (ORDER BY year), 1) AS avg_pct_change
+FROM yearly
+ORDER BY year;</sql><sql name="1.3 Analyse temperature around holidays">SELECT
+    holiday,
+    strftime('%Y', date_time)                        AS year,
+    COUNT(*)                                         AS records,
+    ROUND(MIN(CAST(temp AS REAL) - 273.15), 1)       AS min_temp_c,
+    ROUND(AVG(CAST(temp AS REAL) - 273.15), 1)       AS avg_temp_c,
+    ROUND(MAX(CAST(temp AS REAL) - 273.15), 1)       AS max_temp_c
+FROM traffic
+WHERE holiday IN ('New Years Day', 'Labor Day')
+  AND strftime('%Y', date_time) IN ('2015', '2016', '2017')
+  AND CAST(temp AS REAL) &gt; 0
+GROUP BY holiday, year
+ORDER BY holiday, year;</sql><sql name="1.3 Analyse temperature around holidays_1">WITH holiday_days AS (
+    SELECT DISTINCT date(date_time) AS day, holiday
+    FROM traffic
+    WHERE holiday IN ('New Years Day', 'Labor Day')
+      AND strftime('%Y', date_time) IN ('2015', '2016', '2017')
+),
+daily AS (
+    SELECT
+        h.holiday,
+        strftime('%Y', t.date_time)                AS year,
+        COUNT(*)                                   AS records,
+        AVG(CAST(t.temp AS REAL) - 273.15)         AS avg_temp_c,
+        AVG(CAST(t.traffic_volume AS INTEGER))     AS avg_traffic,
+        SUM(CAST(t.rain_1h AS REAL))               AS total_rain_mm,
+        SUM(CAST(t.snow_1h AS REAL))               AS total_snow_mm
+    FROM traffic t
+    JOIN holiday_days h ON date(t.date_time) = h.day
+    WHERE CAST(t.temp AS REAL) &gt; 0
+    GROUP BY h.holiday, year
+)
+SELECT holiday, year, records,
+       ROUND(avg_temp_c, 1)    AS avg_temp_c,
+       ROUND(avg_traffic, 0)   AS avg_traffic,
+       ROUND(total_rain_mm, 1) AS rain_mm,
+       ROUND(total_snow_mm, 1) AS snow_mm
+FROM daily
+ORDER BY holiday, year;</sql><current_tab id="2"/></tab_sql></sqlb_project>
